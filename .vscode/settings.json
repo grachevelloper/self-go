@@ -1,0 +1,10 @@
+{
+    "files.autoSave": "onFocusChange",
+    "[go]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "editor.defaultFormatter": "golang.go"
+}
