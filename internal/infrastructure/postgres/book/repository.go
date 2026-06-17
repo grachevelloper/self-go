@@ -1,15 +1,27 @@
 package repository
 
 import (
-	"book-service/internal/delivery/http/book"
 	"book-service/internal/domain"
+	usecasebook "book-service/internal/usecase/book"
 	"context"
 	"database/sql"
 )
 
+const bookColumns = `
+	id,
+	title,
+	author,
+	status,
+	published_at,
+	created_at,
+	updated_at
+`
+
 type Repository struct {
 	db *sql.DB
 }
+
+var _ usecasebook.Repository = (*Repository)(nil)
 
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{
@@ -17,35 +29,30 @@ func NewRepository(db *sql.DB) *Repository {
 	}
 }
 
-func (r *Repository) Create(ctx context.Context, book book.CreateBookInput) error {
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO books (title, author, status)
-		VALUES ($1, $2, $3)
-	`, book.Title, book.Author, book.Status)
+func (r *Repository) Create(ctx context.Context, input usecasebook.CreateBookInput) (*domain.Book, error) {
+	row := r.db.QueryRowContext(ctx, `
+		INSERT INTO books (title, author, status, published_at)
+		VALUES ($1, $2, $3, $4)
+		RETURNING `+bookColumns+`
+	`, input.Title, input.Author, input.Status, input.PublishedAt)
 
-	return err
+	return scanBook(row)
 }
 
 func (r *Repository) GetById(ctx context.Context, id int64) (*domain.Book, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT * 
-		from books
+		SELECT `+bookColumns+`
+		FROM books
 		WHERE id = $1
 	`, id)
 
-	var book domain.Book
-
-	if err := row.Scan(&book.ID, &book.Title, &book.Status, &book.Author); err != nil {
-		return nil, err
-	}
-
-	return &book, nil
+	return scanBook(row)
 }
 
 func (r *Repository) GetAll(ctx context.Context) ([]*domain.Book, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT *
-		from books
+		SELECT `+bookColumns+`
+		FROM books
 	`)
 	if err != nil {
 		return nil, err
@@ -56,13 +63,12 @@ func (r *Repository) GetAll(ctx context.Context) ([]*domain.Book, error) {
 	var books []*domain.Book
 
 	for rows.Next() {
-		var book domain.Book
-
-		if err := rows.Scan(&book.ID, &book.Title, &book.Status, &book.Author); err != nil {
+		book, err := scanBook(rows)
+		if err != nil {
 			return nil, err
 		}
 
-		books = append(books, &book)
+		books = append(books, book)
 
 	}
 	if err := rows.Err(); err != nil {
@@ -72,32 +78,53 @@ func (r *Repository) GetAll(ctx context.Context) ([]*domain.Book, error) {
 	return books, nil
 }
 
-func (r *Repository) Update(ctx context.Context, id int64, input book.UpdateBookInput) (book.UpdateBookOutput, error) {
-	updatedBook := &domain.Book{
-		ID: id,
-	}
-
-	if input.Title != nil {
-		updatedBook.Title = *input.Title
-	}
-
-	if input.Author != nil {
-		updatedBook.Author = *input.Author
-	}
-	if input.Status != nil {
-		updatedBook.Status = *input.Status
-	}
-
+func (r *Repository) Update(ctx context.Context, id int64, input usecasebook.UpdateBookInput) (*domain.Book, error) {
 	row := r.db.QueryRowContext(ctx, `
-		Update books		
-		SET title = $1, author = $2, status = $3
-		WHERE id = $4
-		RETURNING id, title, status, author
-	`, updatedBook.Title, updatedBook.Author, updatedBook.Status, id)
+		UPDATE books
+		SET
+			title = COALESCE($1, title),
+			author = COALESCE($2, author),
+			status = COALESCE($3, status),
+			published_at = COALESCE($4, published_at),
+			updated_at = now()
+		WHERE id = $5
+		RETURNING `+bookColumns+`
+	`, input.Title, input.Author, input.Status, input.PublishedAt, id)
 
-	if err := row.Scan(&updatedBook.ID, &updatedBook.Title, &updatedBook.Status, &updatedBook.Author); err != nil {
+	return scanBook(row)
+}
+
+func (r *Repository) Delete(ctx context.Context, id int64) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM books
+		WHERE id=$1
+	`, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanBook(s scanner) (*domain.Book, error) {
+	var book domain.Book
+
+	err := s.Scan(
+		&book.ID,
+		&book.Title,
+		&book.Author,
+		&book.Status,
+		&book.PublishedAt,
+		&book.CreatedAt,
+		&book.UpdatedAt,
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	return updatedBook, nil
+	return &book, nil
 }

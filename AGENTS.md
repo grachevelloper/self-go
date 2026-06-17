@@ -14,6 +14,9 @@ The service should eventually support:
 - a structure that is easy to extend horizontally and vertically.
 
 The project is educational. The user is learning Go and should implement the project step by step.
+The educational nature must affect only the size and sequencing of tasks, not the engineering bar.
+All reviews, recommendations, and acceptance criteria must hold the project to production-quality Go standards:
+idiomatic code, clear package boundaries, explicit contracts, testability, maintainability, and no intentional shortcuts.
 
 ## Collaboration Rules
 
