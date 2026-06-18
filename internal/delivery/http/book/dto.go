@@ -4,14 +4,24 @@ import "time"
 
 type CreateBookRequest struct {
 	Title       string    `json:"title"`
-	Author      string    `json:"authors"`
+	Author      string    `json:"author"`
 	Status      string    `json:"status"`
 	PublishedAt time.Time `json:"published_at"`
 }
 
+type BookResponse struct {
+	ID          int64     `json:"id"`
+	Title       string    `json:"title"`
+	Author      string    `json:"author"`
+	Status      string    `json:"status"`
+	PublishedAt time.Time `json:"published_at"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type UpdateBookRequest struct {
 	Title       *string    `json:"title"`
-	Author      *string    `json:"authors"`
+	Author      *string    `json:"author"`
 	Status      *string    `json:"status"`
 	PublishedAt *time.Time `json:"published_at"`
 }

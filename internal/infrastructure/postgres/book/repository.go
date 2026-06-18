@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"book-service/internal/domain"
-	usecasebook "book-service/internal/usecase/book"
+	domain "book-service/internal/domain/book"
+	usecase "book-service/internal/usecase/book"
 	"context"
 	"database/sql"
 )
@@ -21,7 +21,7 @@ type Repository struct {
 	db *sql.DB
 }
 
-var _ usecasebook.Repository = (*Repository)(nil)
+var _ usecase.Repository = (*Repository)(nil)
 
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{
@@ -29,7 +29,7 @@ func NewRepository(db *sql.DB) *Repository {
 	}
 }
 
-func (r *Repository) Create(ctx context.Context, input usecasebook.CreateBookInput) (*domain.Book, error) {
+func (r *Repository) Create(ctx context.Context, input usecase.CreateBookInput) (*domain.Book, error) {
 	row := r.db.QueryRowContext(ctx, `
 		INSERT INTO books (title, author, status, published_at)
 		VALUES ($1, $2, $3, $4)
@@ -78,7 +78,7 @@ func (r *Repository) GetAll(ctx context.Context) ([]*domain.Book, error) {
 	return books, nil
 }
 
-func (r *Repository) Update(ctx context.Context, id int64, input usecasebook.UpdateBookInput) (*domain.Book, error) {
+func (r *Repository) Update(ctx context.Context, id int64, input usecase.UpdateBookInput) (*domain.Book, error) {
 	row := r.db.QueryRowContext(ctx, `
 		UPDATE books
 		SET

@@ -1,6 +1,8 @@
-package domain
+package book
 
-import "time"
+import (
+	"time"
+)
 
 type Book struct {
 	ID          int64
@@ -9,5 +11,5 @@ type Book struct {
 	Status      BookStatus
 	PublishedAt time.Time
 	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	UpdatedAt   *time.Time
 }

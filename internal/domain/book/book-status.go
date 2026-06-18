@@ -1,4 +1,4 @@
-package domain
+package book
 
 type BookStatus string
 
@@ -7,12 +7,3 @@ const (
 	BookStatusPublished BookStatus = "in_wishlist"
 	BookStatusArchived  BookStatus = "finished"
 )
-
-func (s BookStatus) Valid() bool {
-	switch s {
-	case BookStatusDraft, BookStatusPublished, BookStatusArchived:
-		return true
-	default:
-		return false
-	}
-}
