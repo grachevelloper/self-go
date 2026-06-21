@@ -5,12 +5,12 @@ import (
 )
 
 type Config struct {
-	TokenSecret string
+	Origin string
 }
 
 func FromEnv() Config {
 	return Config{
-		TokenSecret: env("TOKEN_SECRET", "123"),
+		Origin: env("Origin", "localhost:4200"),
 	}
 }
 
