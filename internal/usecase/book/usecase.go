@@ -2,30 +2,34 @@ package book
 
 import (
 	"book-service/internal/domain/book"
+	"book-service/internal/usecase/shared/uuid"
 	"context"
+	"time"
 )
 
 type UseCase struct {
-	repo Repository
+	repo        Repository
+	generatorID uuid.IDGenerator
 }
 
-func NewUseCase(repo Repository) *UseCase {
+func NewUseCase(repo Repository, generateID uuid.IDGenerator) *UseCase {
 	return &UseCase{
-		repo: repo,
+		repo:        repo,
+		generatorID: generateID,
 	}
 }
 
 func (u *UseCase) Create(ctx context.Context, input CreateBookInput) (*book.Book, error) {
-	if err := book.ValidateAuthor(input.Author); err != nil {
-		return nil, err
-	}
-	if err := book.ValidateTitle(input.Title); err != nil {
+
+	book, err := input.toBook(u.generatorID)
+
+	if err != nil {
 		return nil, err
 	}
 
-	return u.repo.Create(ctx, input)
+	return u.repo.Create(ctx, book)
 }
-func (u *UseCase) GetById(ctx context.Context, id int64) (*book.Book, error) {
+func (u *UseCase) GetById(ctx context.Context, id string) (*book.Book, error) {
 	return u.repo.GetById(ctx, id)
 }
 
@@ -33,23 +37,51 @@ func (u *UseCase) GetAll(ctx context.Context) ([]*book.Book, error) {
 	return u.repo.GetAll(ctx)
 }
 
-func (u *UseCase) Update(ctx context.Context, id int64, input UpdateBookInput) (*book.Book, error) {
-
-	if input.Author != nil {
-		if err := book.ValidateAuthor(*input.Author); err != nil {
-			return nil, err
-		}
+func (u *UseCase) Update(ctx context.Context, input UpdateBookInput) (*book.Book, error) {
+	if err := book.ValidateID(input.ID); err != nil {
+		return nil, err
 	}
 
-	if input.Title != nil {
-		if err := book.ValidateAuthor(*input.Title); err != nil {
-			return nil, err
-		}
+	existing, err := u.repo.GetById(ctx, input.ID)
+	if err != nil {
+		return nil, err
 	}
 
-	return u.repo.Update(ctx, id, input)
+	updated, err := input.toBook(existing)
+	if err != nil {
+		return nil, err
+	}
+
+	return u.repo.Update(ctx, updated, existing.UpdatedAt())
 }
 
-func (u *UseCase) Delete(ctx context.Context, id int64) error {
+func (u *UseCase) Delete(ctx context.Context, id string) error {
 	return u.repo.Delete(ctx, id)
+}
+
+func (input CreateBookInput) toBook(generatorID uuid.IDGenerator) (*book.Book, error) {
+	return book.NewBook(book.NewBookParams{
+		ID:          generatorID(),
+		Title:       input.Title,
+		Author:      input.Author,
+		Status:      book.BookStatus(input.Status),
+		PublishedAt: input.PublishedAt,
+		CreatedAt:   time.Now(),
+	})
+}
+
+func (input UpdateBookInput) toBook(existing *book.Book) (*book.Book, error) {
+	var status *book.BookStatus
+	if input.Status != nil {
+		value := book.BookStatus(*input.Status)
+		status = &value
+	}
+
+	return existing.Updated(book.UpdateBookParams{
+		Title:       input.Title,
+		Author:      input.Author,
+		Status:      status,
+		PublishedAt: input.PublishedAt,
+		UpdatedAt:   time.Now(),
+	})
 }

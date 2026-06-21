@@ -2,9 +2,11 @@ package book
 
 import (
 	domainbook "book-service/internal/domain/book"
+	"book-service/internal/domain/shared"
 	usecasebook "book-service/internal/usecase/book"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -15,13 +17,14 @@ type Service interface {
 	) (*domainbook.Book, error)
 	Update(
 		ctx context.Context,
-		id int64,
 		input usecasebook.UpdateBookInput,
 	) (*domainbook.Book, error)
-	GetById(ctx context.Context, id int64) (*domainbook.Book, error)
+	GetById(ctx context.Context, id string) (*domainbook.Book, error)
 	GetAll(ctx context.Context) ([]*domainbook.Book, error)
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, id string) error
 }
+
+var _ Service = (*usecasebook.UseCase)(nil)
 
 type Handler struct {
 	service Service
@@ -44,6 +47,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	createdBook, err := h.service.Create(r.Context(), input)
 	if err != nil {
+		var validationError *shared.ValidationError
+		if errors.As(err, &validationError) {
+			http.Error(w, "invalid book data", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "failed to create book", http.StatusInternalServerError)
 		return
 	}

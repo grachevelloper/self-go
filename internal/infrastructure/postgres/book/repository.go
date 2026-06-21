@@ -2,9 +2,11 @@ package repository
 
 import (
 	domain "book-service/internal/domain/book"
-	usecase "book-service/internal/usecase/book"
+	usecasebook "book-service/internal/usecase/book"
 	"context"
 	"database/sql"
+	"errors"
+	"time"
 )
 
 const bookColumns = `
@@ -21,7 +23,8 @@ type Repository struct {
 	db *sql.DB
 }
 
-var _ usecase.Repository = (*Repository)(nil)
+// compile-time проверка, что PostgreSQL-репозиторий реализует интерфейс use case
+var _ usecasebook.Repository = (*Repository)(nil)
 
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{
@@ -29,17 +32,33 @@ func NewRepository(db *sql.DB) *Repository {
 	}
 }
 
-func (r *Repository) Create(ctx context.Context, input usecase.CreateBookInput) (*domain.Book, error) {
+func (r *Repository) Create(ctx context.Context, entity *domain.Book) (*domain.Book, error) {
 	row := r.db.QueryRowContext(ctx, `
-		INSERT INTO books (title, author, status, published_at)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO books (
+			id,
+			title,
+			author,
+			status,
+			published_at,
+			created_at,
+			updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING `+bookColumns+`
-	`, input.Title, input.Author, input.Status, input.PublishedAt)
+	`,
+		entity.ID(),
+		entity.Title(),
+		entity.Author(),
+		entity.Status(),
+		entity.PublishedAt(),
+		entity.CreatedAt(),
+		entity.UpdatedAt(),
+	)
 
 	return scanBook(row)
 }
 
-func (r *Repository) GetById(ctx context.Context, id int64) (*domain.Book, error) {
+func (r *Repository) GetById(ctx context.Context, id string) (*domain.Book, error) {
 	row := r.db.QueryRowContext(ctx, `
 		SELECT `+bookColumns+`
 		FROM books
@@ -78,23 +97,40 @@ func (r *Repository) GetAll(ctx context.Context) ([]*domain.Book, error) {
 	return books, nil
 }
 
-func (r *Repository) Update(ctx context.Context, id int64, input usecase.UpdateBookInput) (*domain.Book, error) {
+func (r *Repository) Update(
+	ctx context.Context,
+	entity *domain.Book,
+	expectedUpdatedAt *time.Time,
+) (*domain.Book, error) {
 	row := r.db.QueryRowContext(ctx, `
 		UPDATE books
 		SET
-			title = COALESCE($1, title),
-			author = COALESCE($2, author),
-			status = COALESCE($3, status),
-			published_at = COALESCE($4, published_at),
-			updated_at = now()
-		WHERE id = $5
+			title = $1,
+			author = $2,
+			status = $3,
+			published_at = $4,
+			updated_at = $5
+		WHERE id = $6
+			AND updated_at IS NOT DISTINCT FROM $7
 		RETURNING `+bookColumns+`
-	`, input.Title, input.Author, input.Status, input.PublishedAt, id)
+	`,
+		entity.Title(),
+		entity.Author(),
+		entity.Status(),
+		entity.PublishedAt(),
+		entity.UpdatedAt(),
+		entity.ID(),
+		expectedUpdatedAt,
+	)
 
-	return scanBook(row)
+	updated, err := scanBook(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, usecasebook.ErrConcurrentUpdate
+	}
+	return updated, err
 }
 
-func (r *Repository) Delete(ctx context.Context, id int64) error {
+func (r *Repository) Delete(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `
 		DELETE FROM books
 		WHERE id=$1
@@ -111,20 +147,35 @@ type scanner interface {
 }
 
 func scanBook(s scanner) (*domain.Book, error) {
-	var book domain.Book
+	var (
+		id          string
+		title       string
+		author      string
+		status      domain.BookStatus
+		publishedAt time.Time
+		createdAt   time.Time
+		updatedAt   *time.Time
+	)
 
 	err := s.Scan(
-		&book.ID,
-		&book.Title,
-		&book.Author,
-		&book.Status,
-		&book.PublishedAt,
-		&book.CreatedAt,
-		&book.UpdatedAt,
+		&id,
+		&title,
+		&author,
+		&status,
+		&publishedAt,
+		&createdAt,
+		&updatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &book, nil
+	return domain.RestoreBook(domain.NewBookParams{
+		ID:          id,
+		Title:       title,
+		Author:      author,
+		Status:      status,
+		PublishedAt: publishedAt,
+		CreatedAt:   createdAt,
+	}, updatedAt)
 }

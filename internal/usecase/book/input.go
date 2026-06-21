@@ -9,6 +9,7 @@ type CreateBookInput struct {
 	PublishedAt time.Time
 }
 type UpdateBookInput struct {
+	ID          string
 	Title       *string
 	Author      *string
 	Status      *string

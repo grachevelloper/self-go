@@ -30,6 +30,7 @@ idiomatic code, clear package boundaries, explicit contracts, testability, maint
 - Reviews should focus on correctness, Go best practices, extensibility, simplicity, naming, package boundaries, and tests.
 - After review, the assistant either asks for corrections or gives the next task.
 - The project should stay intentionally simple, but not careless.
+- Propose only extensible, reusable solutions suitable for production-grade corporate development. Avoid boilerplate, one-off test doubles, manual duplication, and excessive code. When choosing a solution, account for maintenance cost and future project growth.
 - Prefer standard library first. Add dependencies only when there is a clear reason.
 
 ## Technical Direction

@@ -10,13 +10,13 @@ type CreateBookRequest struct {
 }
 
 type BookResponse struct {
-	ID          int64     `json:"id"`
-	Title       string    `json:"title"`
-	Author      string    `json:"author"`
-	Status      string    `json:"status"`
-	PublishedAt time.Time `json:"published_at"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          string     `json:"id"`
+	Title       string     `json:"title"`
+	Author      string     `json:"author"`
+	Status      string     `json:"status"`
+	PublishedAt time.Time  `json:"published_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   *time.Time `json:"updated_at,omitempty"`
 }
 
 type UpdateBookRequest struct {
