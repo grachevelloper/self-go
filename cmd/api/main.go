@@ -1,22 +1,34 @@
 package main
 
 import (
-	"book-service/internal/delivery"
-	"book-service/internal/delivery/http/book"
-	postgresbook "book-service/internal/infrastructure/postgres/book"
-	"book-service/internal/infrastructure/uuid"
-	usecasebook "book-service/internal/usecase/book"
-	"database/sql"
+	"book-service/internal/app"
+	"context"
+	"errors"
+	"log/slog"
 	"net/http"
+	"os"
 )
 
 func main() {
-	repository := postgresbook.NewRepository(&sql.DB{})
-	bookHandler := book.NewHandler(usecasebook.NewUseCase(repository, uuid.GenerateUUID))
+	ctx := context.Background()
+	bootstrapLogger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	router := delivery.NewRouter(
-		bookHandler,
-	)
+	application, err := app.New(ctx)
+	if err != nil {
+		bootstrapLogger.Error("init app failed", "error", err)
+		os.Exit(1)
+	}
+	defer application.Close()
 
-	http.ListenAndServe(":8080", router)
+	go func() {
+		application.Logger.Info("http server started", "addr", application.Server.Addr)
+
+		if err := application.Server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			application.Logger.Error("http server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	waitForShutdown(application)
+
 }

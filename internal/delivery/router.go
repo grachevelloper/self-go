@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"book-service/internal/config"
 	"book-service/internal/delivery/middleware"
 	"net/http"
 )
@@ -10,11 +9,11 @@ type RouteRegistrar interface {
 	RegisterRoutes(mux *http.ServeMux)
 }
 
-func NewRouter(handlers ...RouteRegistrar) http.Handler {
+func NewRouter(Origin string, handlers ...RouteRegistrar) http.Handler {
 	mux := http.NewServeMux()
 
 	mainMiddleware := middleware.Chain(
-		middleware.CORS(config.FromEnv().Origin),
+		middleware.CORS(Origin),
 		middleware.SetHeaders(),
 	)
 
