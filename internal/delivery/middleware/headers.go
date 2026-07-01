@@ -9,6 +9,7 @@ func SetHeaders() Middleware {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("X-XSS-Protection", "1; mode=block")
+			w.Header().Set("Content-Type", "application/json")
 			next.ServeHTTP(w, r)
 		})
 	}

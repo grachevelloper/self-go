@@ -20,7 +20,6 @@ type BookResponse struct {
 }
 
 type UpdateBookRequest struct {
-	ID          string     `json:"id"`
 	Title       *string    `json:"title"`
 	Author      *string    `json:"author"`
 	Status      *string    `json:"status"`

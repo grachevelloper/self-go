@@ -41,7 +41,7 @@ func New(ctx context.Context) (*App, error) {
 
 	bookRepository := postgresbook.NewRepository(db)
 	bookService := usecasebook.NewUseCase(bookRepository, uuid.GenerateUUID)
-	bookHandler := book.NewHandler(bookService)
+	bookHandler := book.NewHandler(bookService, log)
 
 	router := delivery.NewRouter(
 		cfg.HTTP.Origin,
