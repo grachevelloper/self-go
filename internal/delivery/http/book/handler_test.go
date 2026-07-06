@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"go.uber.org/mock/gomock"
 )
@@ -101,18 +102,35 @@ func TestUpdate(t *testing.T) {
 			"status":"reading",
 			"published_at":"1949-06-08T00:00:00Z"
 		}`))
+		request.SetPathValue("id", "book-id")
 		response := httptest.NewRecorder()
 
+		existing, err := domainbook.RestoreBook(domainbook.NewBookParams{
+			ID:          "book-id",
+			Title:       "Old title",
+			Author:      "George Orwell",
+			Status:      domainbook.BookStatus("reading"),
+			PublishedAt: time.Date(1949, time.June, 8, 0, 0, 0, 0, time.UTC),
+			CreatedAt:   time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC),
+		}, nil)
+		if err != nil {
+			t.Fatalf("RestoreBook() error = %v", err)
+		}
+
 		repository.EXPECT().
-			Update(gomock.Any(), gomock.Any(), gomock.Any()).
-			DoAndReturn(func(_ context.Context, entity *domainbook.Book) (*domainbook.Book, error) {
-				return entity, nil
+			GetById(gomock.Any(), "book-id").
+			Return(existing, nil)
+
+		repository.EXPECT().
+			Update(gomock.Any(), "book-id", gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, _ string, params domainbook.UpdateBookParams, _ *time.Time) (*domainbook.Book, error) {
+				return existing.Updated(params)
 			})
 
-		handler.Create(response, request)
+		handler.Update(response, request)
 
-		if response.Code != http.StatusCreated {
-			t.Fatalf("Create() status = %d, want %d", response.Code, http.StatusCreated)
+		if response.Code != http.StatusAccepted {
+			t.Fatalf("Update() status = %d, want %d", response.Code, http.StatusAccepted)
 		}
 	})
 }

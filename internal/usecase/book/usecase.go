@@ -2,6 +2,7 @@ package book
 
 import (
 	"book-service/internal/domain/book"
+	"book-service/internal/domain/shared/paginated"
 	"book-service/internal/usecase/shared/uuid"
 	"context"
 	"time"
@@ -33,8 +34,18 @@ func (u *UseCase) GetById(ctx context.Context, id string) (*book.Book, error) {
 	return u.repo.GetById(ctx, id)
 }
 
-func (u *UseCase) GetAll(ctx context.Context) ([]*book.Book, error) {
-	return u.repo.GetAll(ctx)
+func (u *UseCase) GetAll(ctx context.Context, input GetAllBooksInput) (*paginated.PaginatedEntity[book.Book], error) {
+
+	paginatedParams := paginated.PaginationParams{
+		Page:  input.Page,
+		Limit: input.Limit,
+	}
+
+	if err := paginated.ValidatePaginatedEntity(paginatedParams); err != nil {
+		return nil, err
+	}
+
+	return u.repo.GetAll(ctx, paginatedParams)
 }
 
 func (u *UseCase) Update(ctx context.Context, input UpdateBookInput) (*book.Book, error) {
@@ -47,12 +58,14 @@ func (u *UseCase) Update(ctx context.Context, input UpdateBookInput) (*book.Book
 		return nil, err
 	}
 
-	updated, err := input.toBook(existing)
+	params := input.toUpdateBookParams()
+
+	updated, err := existing.Updated(params)
 	if err != nil {
 		return nil, err
 	}
 
-	return u.repo.Update(ctx, updated, existing.UpdatedAt())
+	return u.repo.Update(ctx, updated.ID(), params, existing.UpdatedAt())
 }
 
 func (u *UseCase) Delete(ctx context.Context, id string) error {
@@ -70,18 +83,18 @@ func (input CreateBookInput) toBook(generatorID uuid.IDGenerator) (*book.Book, e
 	})
 }
 
-func (input UpdateBookInput) toBook(existing *book.Book) (*book.Book, error) {
+func (input UpdateBookInput) toUpdateBookParams() book.UpdateBookParams {
 	var status *book.BookStatus
 	if input.Status != nil {
 		value := book.BookStatus(*input.Status)
 		status = &value
 	}
 
-	return existing.Updated(book.UpdateBookParams{
+	return book.UpdateBookParams{
 		Title:       input.Title,
 		Author:      input.Author,
 		Status:      status,
 		PublishedAt: input.PublishedAt,
 		UpdatedAt:   time.Now(),
-	})
+	}
 }

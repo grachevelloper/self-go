@@ -1,8 +1,11 @@
 package book
 
 import (
+	httpShared "book-service/internal/delivery/http/shared"
+	"book-service/internal/domain/book"
 	domainbook "book-service/internal/domain/book"
 	"book-service/internal/domain/shared"
+	"book-service/internal/domain/shared/paginated"
 	usecasebook "book-service/internal/usecase/book"
 	"context"
 	"encoding/json"
@@ -21,7 +24,7 @@ type Service interface {
 		input usecasebook.UpdateBookInput,
 	) (*domainbook.Book, error)
 	GetById(ctx context.Context, id string) (*domainbook.Book, error)
-	GetAll(ctx context.Context) ([]*domainbook.Book, error)
+	GetAll(ctx context.Context, input usecasebook.GetAllBooksInput) (*paginated.PaginatedEntity[book.Book], error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -114,17 +117,30 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
+	var request GetAllBooksRequest
 
-	books, err := h.service.GetAll(r.Context())
-	if err != nil {
-		http.Error(w, "failed to create book", http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "invalied request body", http.StatusBadRequest)
 		return
 	}
 
-	var response []BookResponse
-	for _, book := range books {
-		response = append(response, bookResponseMapper(book))
+	input := usecasebook.GetAllBooksInput{
+		Page:  request.Page,
+		Limit: request.Limit,
 	}
+
+	paginatedBooks, err := h.service.GetAll(r.Context(), input)
+	if err != nil {
+		http.Error(w, "failed to get books", http.StatusInternalServerError)
+		return
+	}
+
+	var books []BookResponse
+	for _, book := range paginatedBooks.Items {
+		books = append(books, bookResponseMapper(&book))
+	}
+
+	response := httpShared.PaginatedResponseMapper(paginatedBooks, books)
 
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(response); err != nil {

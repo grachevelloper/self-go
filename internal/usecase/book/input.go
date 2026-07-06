@@ -15,3 +15,8 @@ type UpdateBookInput struct {
 	Status      *string
 	PublishedAt *time.Time
 }
+
+type GetAllBooksInput struct {
+	Page  int
+	Limit int
+}

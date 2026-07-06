@@ -1,6 +1,8 @@
 package book
 
-import "time"
+import (
+	"time"
+)
 
 type CreateBookRequest struct {
 	Title       string    `json:"title"`
@@ -24,4 +26,9 @@ type UpdateBookRequest struct {
 	Author      *string    `json:"author"`
 	Status      *string    `json:"status"`
 	PublishedAt *time.Time `json:"published_at"`
+}
+
+type GetAllBooksRequest struct {
+	Page  int `json:"page"`
+	Limit int `json:"limit"`
 }

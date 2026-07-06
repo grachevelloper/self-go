@@ -76,27 +76,34 @@ func TestUpdateUseCase(t *testing.T) {
 	input := usecasebook.UpdateBookInput{ID: existing.ID(), Title: &newTitle}
 
 	repository.EXPECT().GetById(ctx, existing.ID()).Return(existing, nil)
-	repository.EXPECT().Update(ctx, gomock.Any(), &previousUpdatedAt).DoAndReturn(
-		func(_ context.Context, entity *domainbook.Book, expectedUpdatedAt *time.Time) (*domainbook.Book, error) {
+	repository.EXPECT().Update(ctx, existing.ID(), gomock.Any(), &previousUpdatedAt).DoAndReturn(
+		func(_ context.Context, id string, params domainbook.UpdateBookParams, expectedUpdatedAt *time.Time) (*domainbook.Book, error) {
+			if id != existing.ID() {
+				t.Errorf("Update() id = %q, want %q", id, existing.ID())
+			}
 			if expectedUpdatedAt == nil || !expectedUpdatedAt.Equal(previousUpdatedAt) {
 				t.Errorf("Update() expectedUpdatedAt = %v, want %v", expectedUpdatedAt, previousUpdatedAt)
 			}
-			if entity == existing {
+			if params.Title == nil || *params.Title != newTitle {
+				t.Errorf("Update() title param = %v, want %q", params.Title, newTitle)
+			}
+			if params.Author != nil || params.Status != nil || params.PublishedAt != nil {
+				t.Error("Update() set params absent from input")
+			}
+			updated, err := existing.Updated(params)
+			if err != nil {
+				t.Fatalf("Updated() error = %v", err)
+			}
+			if updated == existing {
 				t.Error("Update() mutated the repository entity instead of creating a copy")
 			}
-			if entity.Title() != newTitle {
-				t.Errorf("Update() title = %q, want %q", entity.Title(), newTitle)
-			}
-			if entity.Author() != existing.Author() || entity.Status() != existing.Status() || entity.PublishedAt() != existing.PublishedAt() {
-				t.Error("Update() changed fields absent from input")
-			}
-			if entity.CreatedAt() != createdAt {
+			if updated.CreatedAt() != createdAt {
 				t.Error("Update() changed CreatedAt")
 			}
-			if entity.UpdatedAt() == nil {
+			if updated.UpdatedAt() == nil {
 				t.Fatal("Update() did not set UpdatedAt")
 			}
-			return entity, nil
+			return updated, nil
 		},
 	)
 

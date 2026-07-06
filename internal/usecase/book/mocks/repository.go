@@ -11,6 +11,7 @@ package mocks
 
 import (
 	book "book-service/internal/domain/book"
+	paginated "book-service/internal/domain/shared/paginated"
 	context "context"
 	reflect "reflect"
 	time "time"
@@ -72,18 +73,18 @@ func (mr *MockRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 }
 
 // GetAll mocks base method.
-func (m *MockRepository) GetAll(ctx context.Context) ([]*book.Book, error) {
+func (m *MockRepository) GetAll(ctx context.Context, paginateParams paginated.PaginationParams) (*paginated.PaginatedEntity[book.Book], error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAll", ctx)
-	ret0, _ := ret[0].([]*book.Book)
+	ret := m.ctrl.Call(m, "GetAll", ctx, paginateParams)
+	ret0, _ := ret[0].(*paginated.PaginatedEntity[book.Book])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAll indicates an expected call of GetAll.
-func (mr *MockRepositoryMockRecorder) GetAll(ctx any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) GetAll(ctx, paginateParams any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockRepository)(nil).GetAll), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAll", reflect.TypeOf((*MockRepository)(nil).GetAll), ctx, paginateParams)
 }
 
 // GetById mocks base method.
@@ -102,16 +103,16 @@ func (mr *MockRepositoryMockRecorder) GetById(ctx, id any) *gomock.Call {
 }
 
 // Update mocks base method.
-func (m *MockRepository) Update(ctx context.Context, entity *book.Book, expectedUpdatedAt *time.Time) (*book.Book, error) {
+func (m *MockRepository) Update(ctx context.Context, id string, params book.UpdateBookParams, expectedUpdatedAt *time.Time) (*book.Book, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, entity, expectedUpdatedAt)
+	ret := m.ctrl.Call(m, "Update", ctx, id, params, expectedUpdatedAt)
 	ret0, _ := ret[0].(*book.Book)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockRepositoryMockRecorder) Update(ctx, entity, expectedUpdatedAt any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Update(ctx, id, params, expectedUpdatedAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRepository)(nil).Update), ctx, entity, expectedUpdatedAt)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRepository)(nil).Update), ctx, id, params, expectedUpdatedAt)
 }
