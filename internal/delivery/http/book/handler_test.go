@@ -3,9 +3,10 @@ package book
 import (
 	httpShared "book-service/internal/delivery/http/shared"
 	domainbook "book-service/internal/domain/book"
-	"book-service/internal/domain/shared/paginated"
 	usecasebook "book-service/internal/usecase/book"
 	"book-service/internal/usecase/book/mocks"
+	"book-service/internal/usecase/shared/order"
+	"book-service/internal/usecase/shared/paginated"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -146,7 +147,7 @@ func TestGetAll(t *testing.T) {
 		service := usecasebook.NewUseCase(repository, func() string { return "unused" })
 		handler := NewHandler(service, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
-		request := httptest.NewRequest(http.MethodGet, "/books?page=2&limit=3", nil)
+		request := httptest.NewRequest(http.MethodGet, "/books?page=2&limit=3&order=asc&sort_field=title", nil)
 		response := httptest.NewRecorder()
 
 		createdAt := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
@@ -163,8 +164,13 @@ func TestGetAll(t *testing.T) {
 		}
 
 		repository.EXPECT().
-			GetAll(gomock.Any(), paginated.PaginationParams{Page: 2, Limit: 3}).
-			Return(&paginated.PaginatedEntity[domainbook.Book]{
+			GetAll(gomock.Any(), paginated.PaginationParams[usecasebook.BookSortField]{
+				Page:      2,
+				Limit:     3,
+				Order:     order.Asc,
+				SortField: usecasebook.Title,
+			}).
+			Return(&paginated.New[domainbook.Book]{
 				Items:   []domainbook.Book{*book},
 				Page:    2,
 				Limit:   3,

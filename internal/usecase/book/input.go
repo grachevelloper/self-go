@@ -1,6 +1,9 @@
 package book
 
-import "time"
+import (
+	"book-service/internal/usecase/shared/order"
+	"time"
+)
 
 type CreateBookInput struct {
 	Title       string
@@ -17,6 +20,15 @@ type UpdateBookInput struct {
 }
 
 type GetAllBooksInput struct {
-	Page  int
-	Limit int
+	Page      int
+	Limit     int
+	SortField BookSortField
+	Order     order.New
 }
+
+type BookSortField string
+
+const (
+	Title     BookSortField = "title"
+	CreatedAt BookSortField = "created_at"
+)

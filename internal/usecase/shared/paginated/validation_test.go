@@ -2,7 +2,7 @@ package paginated_test
 
 import (
 	"book-service/internal/domain/shared"
-	"book-service/internal/domain/shared/paginated"
+	"book-service/internal/usecase/shared/paginated"
 	"errors"
 	"testing"
 )

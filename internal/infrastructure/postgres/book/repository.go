@@ -3,11 +3,13 @@ package repository
 import (
 	"book-service/internal/domain/book"
 	domain "book-service/internal/domain/book"
-	"book-service/internal/domain/shared/paginated"
 	usecasebook "book-service/internal/usecase/book"
+	"book-service/internal/usecase/shared/order"
+	"book-service/internal/usecase/shared/paginated"
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -70,13 +72,18 @@ func (r *Repository) GetById(ctx context.Context, id string) (*domain.Book, erro
 	return scanBook(row)
 }
 
-func (r *Repository) GetAll(ctx context.Context, pE paginated.PaginationParams) (*paginated.PaginatedEntity[book.Book], error) {
+func (r *Repository) GetAll(ctx context.Context, pE paginated.PaginationParams[usecasebook.BookSortField]) (*paginated.New[book.Book], error) {
 	offset := (pE.Page - 1) * pE.Limit
+
+	sortField, sortOrder, err := bookOrderingSQL(pE.SortField, pE.Order)
+	if err != nil {
+		return nil, err
+	}
 
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT `+bookColumns+`
 		FROM books
-		ORDER BY created_at DESC, id ASC
+		ORDER BY `+sortField+` `+sortOrder+`
 		LIMIT $1 OFFSET $2
 	`, pE.Limit, offset)
 	if err != nil {
@@ -111,7 +118,7 @@ func (r *Repository) GetAll(ctx context.Context, pE paginated.PaginationParams) 
 
 	hasNext := total > len(books)+len(books)
 
-	return &paginated.PaginatedEntity[domain.Book]{
+	return &paginated.New[domain.Book]{
 		Items:   books,
 		HasNext: hasNext,
 		Total:   total,
@@ -207,4 +214,28 @@ func scanBook(s scanner) (*domain.Book, error) {
 		PublishedAt: publishedAt,
 		CreatedAt:   createdAt,
 	}, updatedAt)
+}
+
+func bookOrderingSQL(sortField usecasebook.BookSortField, sortOrder order.New) (string, string, error) {
+	sortFields := map[usecasebook.BookSortField]string{
+		usecasebook.Title:     "title",
+		usecasebook.CreatedAt: "created_at",
+	}
+
+	orders := map[order.New]string{
+		order.Asc:  "ASC",
+		order.Desc: "DESC",
+	}
+
+	fieldSQL, ok := sortFields[sortField]
+	if !ok {
+		return "", "", fmt.Errorf("unsupported book sort field: %q", sortField)
+	}
+
+	orderSQL, ok := orders[sortOrder]
+	if !ok {
+		return "", "", fmt.Errorf("unsupported book sort order: %q", sortOrder)
+	}
+
+	return fieldSQL, orderSQL, nil
 }

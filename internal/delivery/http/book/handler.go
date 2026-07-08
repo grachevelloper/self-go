@@ -5,8 +5,8 @@ import (
 	"book-service/internal/domain/book"
 	domainbook "book-service/internal/domain/book"
 	"book-service/internal/domain/shared"
-	"book-service/internal/domain/shared/paginated"
 	usecasebook "book-service/internal/usecase/book"
+	"book-service/internal/usecase/shared/paginated"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,7 +24,7 @@ type Service interface {
 		input usecasebook.UpdateBookInput,
 	) (*domainbook.Book, error)
 	GetById(ctx context.Context, id string) (*domainbook.Book, error)
-	GetAll(ctx context.Context, input usecasebook.GetAllBooksInput) (*paginated.PaginatedEntity[book.Book], error)
+	GetAll(ctx context.Context, input usecasebook.GetAllBooksInput) (*paginated.New[book.Book], error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -129,9 +129,23 @@ func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	order, err := httpShared.ParseSortOrder(r.URL.Query().Get("order"))
+	if err != nil {
+		http.Error(w, "invalid order query parameter", http.StatusBadRequest)
+		return
+	}
+
+	sortField, err := parseBookSortField(r.URL.Query().Get("sort_field"))
+	if err != nil {
+		http.Error(w, "invalid sort_field query parameter", http.StatusBadRequest)
+		return
+	}
+
 	input := usecasebook.GetAllBooksInput{
-		Page:  page,
-		Limit: limit,
+		Page:      page,
+		Limit:     limit,
+		Order:     order,
+		SortField: sortField,
 	}
 
 	paginatedBooks, err := h.service.GetAll(r.Context(), input)
@@ -223,4 +237,21 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 		}
 	})
 
+}
+
+func parseBookSortField(order string) (usecasebook.BookSortField, error) {
+	if order == "" {
+		return usecasebook.CreatedAt, nil
+	}
+	sortField := usecasebook.BookSortField(order)
+
+	switch sortField {
+	case usecasebook.Title, usecasebook.CreatedAt:
+		return sortField, nil
+	default:
+		return "", &shared.ValidationError{
+			Field: "sort_field",
+			Code:  "invalid",
+		}
+	}
 }

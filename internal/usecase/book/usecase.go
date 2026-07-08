@@ -2,7 +2,7 @@ package book
 
 import (
 	"book-service/internal/domain/book"
-	"book-service/internal/domain/shared/paginated"
+	"book-service/internal/usecase/shared/paginated"
 	"book-service/internal/usecase/shared/uuid"
 	"context"
 	"time"
@@ -34,11 +34,13 @@ func (u *UseCase) GetById(ctx context.Context, id string) (*book.Book, error) {
 	return u.repo.GetById(ctx, id)
 }
 
-func (u *UseCase) GetAll(ctx context.Context, input GetAllBooksInput) (*paginated.PaginatedEntity[book.Book], error) {
+func (u *UseCase) GetAll(ctx context.Context, input GetAllBooksInput) (*paginated.New[book.Book], error) {
 
-	paginatedParams := paginated.PaginationParams{
-		Page:  input.Page,
-		Limit: input.Limit,
+	paginatedParams := paginated.PaginationParams[BookSortField]{
+		Page:      input.Page,
+		Limit:     input.Limit,
+		Order:     input.Order,
+		SortField: input.SortField,
 	}
 
 	if err := paginated.ValidatePaginatedEntity(paginatedParams); err != nil {

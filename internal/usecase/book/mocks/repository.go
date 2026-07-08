@@ -11,7 +11,8 @@ package mocks
 
 import (
 	book "book-service/internal/domain/book"
-	paginated "book-service/internal/domain/shared/paginated"
+	book0 "book-service/internal/usecase/book"
+	paginated "book-service/internal/usecase/shared/paginated"
 	context "context"
 	reflect "reflect"
 	time "time"
@@ -73,10 +74,10 @@ func (mr *MockRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 }
 
 // GetAll mocks base method.
-func (m *MockRepository) GetAll(ctx context.Context, paginateParams paginated.PaginationParams) (*paginated.PaginatedEntity[book.Book], error) {
+func (m *MockRepository) GetAll(ctx context.Context, paginateParams paginated.PaginationParams[book0.BookSortField]) (*paginated.New[book.Book], error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAll", ctx, paginateParams)
-	ret0, _ := ret[0].(*paginated.PaginatedEntity[book.Book])
+	ret0, _ := ret[0].(*paginated.New[book.Book])
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

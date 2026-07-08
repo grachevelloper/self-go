@@ -1,8 +1,8 @@
 package shared
 
-import "book-service/internal/domain/shared/paginated"
+import "book-service/internal/usecase/shared/paginated"
 
-func PaginatedResponseMapper[T any, R any](paginated *paginated.PaginatedEntity[T], items []R) PaginatedResponse[R] {
+func PaginatedResponseMapper[T any, R any](paginated *paginated.New[T], items []R) PaginatedResponse[R] {
 	return PaginatedResponse[R]{
 		Page:    paginated.Page,
 		HasNext: paginated.HasNext,
