@@ -117,21 +117,32 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
-	var request GetAllBooksRequest
+	page, err := httpShared.ParseIntQuery(r, "page")
+	if err != nil {
+		http.Error(w, "invalid page query parameter", http.StatusBadRequest)
+		return
+	}
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "invalied request body", http.StatusBadRequest)
+	limit, err := httpShared.ParseIntQuery(r, "limit")
+	if err != nil {
+		http.Error(w, "invalid limit query parameter", http.StatusBadRequest)
 		return
 	}
 
 	input := usecasebook.GetAllBooksInput{
-		Page:  request.Page,
-		Limit: request.Limit,
+		Page:  page,
+		Limit: limit,
 	}
 
 	paginatedBooks, err := h.service.GetAll(r.Context(), input)
 	if err != nil {
+		var validationError *shared.ValidationError
+		if errors.As(err, &validationError) {
+			http.Error(w, "invalid pagination data", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "failed to get books", http.StatusInternalServerError)
+		h.logEncodeError(r, err)
 		return
 	}
 

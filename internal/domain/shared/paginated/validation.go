@@ -5,7 +5,7 @@ import (
 )
 
 func ValidateLimit(limit int) error {
-	if limit < 0 {
+	if limit <= 0 {
 		return &shared.ValidationError{
 			Field: "limit",
 			Code:  "must be > 0",
@@ -15,7 +15,7 @@ func ValidateLimit(limit int) error {
 }
 
 func ValidatePage(page int) error {
-	if page < 0 {
+	if page <= 0 {
 		return &shared.ValidationError{
 			Field: "page",
 			Code:  "must be > 0",

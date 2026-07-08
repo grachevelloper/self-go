@@ -71,11 +71,14 @@ func (r *Repository) GetById(ctx context.Context, id string) (*domain.Book, erro
 }
 
 func (r *Repository) GetAll(ctx context.Context, pE paginated.PaginationParams) (*paginated.PaginatedEntity[book.Book], error) {
+	offset := (pE.Page - 1) * pE.Limit
+
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT `+bookColumns+`
 		FROM books
-		Limit $1
-	`)
+		ORDER BY created_at DESC, id ASC
+		LIMIT $1 OFFSET $2
+	`, pE.Limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -102,13 +105,11 @@ func (r *Repository) GetAll(ctx context.Context, pE paginated.PaginationParams) 
 		FROM books
 	`)
 
-	if err := row.Scan(
-		&total,
-	); err != nil {
+	if err := row.Scan(&total); err != nil {
 		return nil, err
 	}
 
-	hasNext := total > len(books)
+	hasNext := total > len(books)+len(books)
 
 	return &paginated.PaginatedEntity[domain.Book]{
 		Items:   books,

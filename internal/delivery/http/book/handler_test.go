@@ -1,11 +1,14 @@
 package book
 
 import (
+	httpShared "book-service/internal/delivery/http/shared"
 	domainbook "book-service/internal/domain/book"
+	"book-service/internal/domain/shared/paginated"
 	usecasebook "book-service/internal/usecase/book"
 	"book-service/internal/usecase/book/mocks"
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -131,6 +134,59 @@ func TestUpdate(t *testing.T) {
 
 		if response.Code != http.StatusAccepted {
 			t.Fatalf("Update() status = %d, want %d", response.Code, http.StatusAccepted)
+		}
+	})
+}
+
+func TestGetAll(t *testing.T) {
+	t.Run("valid data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		repository := mocks.NewMockRepository(ctrl)
+		service := usecasebook.NewUseCase(repository, func() string { return "unused" })
+		handler := NewHandler(service, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+		request := httptest.NewRequest(http.MethodGet, "/books?page=2&limit=3", nil)
+		response := httptest.NewRecorder()
+
+		createdAt := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+		book, err := domainbook.RestoreBook(domainbook.NewBookParams{
+			ID:          "book-id",
+			Title:       "1984",
+			Author:      "George Orwell",
+			Status:      domainbook.BookStatus("reading"),
+			PublishedAt: time.Date(1949, time.June, 8, 0, 0, 0, 0, time.UTC),
+			CreatedAt:   createdAt,
+		}, nil)
+		if err != nil {
+			t.Fatalf("RestoreBook() error = %v", err)
+		}
+
+		repository.EXPECT().
+			GetAll(gomock.Any(), paginated.PaginationParams{Page: 2, Limit: 3}).
+			Return(&paginated.PaginatedEntity[domainbook.Book]{
+				Items:   []domainbook.Book{*book},
+				Page:    2,
+				Limit:   3,
+				Total:   4,
+				HasNext: true,
+			}, nil)
+
+		handler.GetAll(response, request)
+
+		if response.Code != http.StatusOK {
+			t.Fatalf("GetAll() status = %d, want %d", response.Code, http.StatusOK)
+		}
+
+		var got httpShared.PaginatedResponse[BookResponse]
+		if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		if got.Page != 2 || got.Limit != 3 || got.Total != 4 || !got.HasNext {
+			t.Fatalf("GetAll() response = %+v, want page=2 limit=3 total=4 has_next=true", got)
+		}
+		if len(got.Items) != 1 || got.Items[0].ID != "book-id" {
+			t.Fatalf("GetAll() items = %+v, want one book-id item", got.Items)
 		}
 	})
 }
